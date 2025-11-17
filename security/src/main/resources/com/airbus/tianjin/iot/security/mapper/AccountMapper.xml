@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wisdomsky.dmp.security.mapper.AccountMapper">
+
+   <resultMap id="accountResultMap" type="com.wisdomsky.dmp.security.model.Account">
+      <id property="id" column="id" />
+      <result property="code" column="code" />
+      <result property="name" column="name" />
+      <result property="password" column="password" />
+      <result property="type" column="type" />
+      <result property="status" column="status" />
+      <result property="mobile" column="mobile" />
+      <result property="email" column="email" />
+      <result property="avatar" column="avatar" />
+      <result property="recordCreatedTime" column="record_created_time" />
+      <result property="recordUpdatedTime" column="record_updated_time" />
+   </resultMap>
+
+   <sql id="whereClause">
+      record_deleted = 0
+      <if test="param.idEqual != null">
+         and id = #{param.idEqual}
+      </if>
+      <if test="param.codeEqual != null and param.codeEqual != ''">
+         and code = #{param.codeEqual}
+      </if>
+      <if test="param.codeLike != null and param.codeLike != ''">
+         and code like concat('%', #{param.codeLike}, '%')
+      </if>
+      <if test="param.nameLike != null and param.nameLike != ''">
+         and name like concat('%', #{param.nameLike}, '%')
+      </if>
+      <if test="param.typeEqual != null and param.typeEqual > -1">
+         and type = #{param.typeEqual}
+      </if>
+      <if test="param.typeIn != null and param.typeIn.siez() > 0">
+         and type in
+         <foreach item="type" collection="param.typeIn" open="(" separator="," close=")">
+            #{type}
+         </foreach>
+      </if>
+      <if test="param.statusEqual != null and param.statusEqual > -1">
+         and status = #{param.statusEqual}
+      </if>
+      <if test="param.statusIn != null and param.statusIn.siez() > 0">
+         and status in
+         <foreach item="status" collection="param.statusIn" open="(" separator="," close=")">
+            #{status}
+         </foreach>
+      </if>
+      <if test="param.roleIdEqual != null and param.roleIdEqual > 0">
+         and id in (select id from dmp_account_role_link where role_id = #{param.roleIdEqual})
+      </if>
+   </sql>
+
+   <!-- 1. create -->
+   <insert id="create" parameterType="com.wisdomsky.dmp.security.model.AccountCreateParam" useGeneratedKeys="true" keyProperty="id">
+      insert into dmp_account(
+         code,
+         name,
+         password,
+         type,
+         status,
+         mobile,
+         email,
+         avatar,
+         record_deleted,
+         record_created_time,
+         record_updated_time)
+      values (
+         #{param.code},
+         #{param.name},
+         #{param.password},
+         #{param.type},
+         #{param.status},
+         #{param.mobile},
+         #{param.email},
+         #{param.avatar},
+         0,
+         now(),
+         now())
+   </insert>
+
+   <!-- 2. update -->
+   <update id="update" parameterType="com.wisdomsky.dmp.security.model.AccountUpdateParam">
+      update dmp_account
+      <set>
+         <if test="param.code != null">code = #{param.code},</if>
+         <if test="param.name != null">name = #{param.name},</if>
+         <if test="param.password != null">password = #{param.password},</if>
+         <if test="param.type != null">type = #{param.type},</if>
+         <if test="param.status != null">status = #{param.status},</if>
+         <if test="param.mobile != null">mobile = #{param.mobile},</if>
+         <if test="param.email != null">email = #{param.email},</if>
+         <if test="param.avatar != null">avatar = #{param.avatar},</if>
+         record_updated_time = now()
+      </set>
+      where id = #{param.id}
+   </update>
+
+   <!-- 3. delete -->
+   <delete id="delete">
+      update dmp_account
+      set code = code || '~deleted~' || id::text,
+          record_deleted = 1,
+          record_updated_time = now()
+      <where>
+         <include refid="whereClause"/>
+      </where> 
+   </delete>
+
+   <!-- 4. count -->
+   <select id="count" parameterType="com.wisdomsky.dmp.security.model.AccountQueryParam" resultType="long">
+      select count(*) from dmp_account
+      <where>
+         <include refid="whereClause"/>
+      </where> 
+   </select>
+
+   <!-- 5. retrieve -->
+   <select id="retrieve" resultMap="accountResultMap">
+      select * from dmp_account
+      <where>
+         <include refid="whereClause"/>
+      </where> 
+      <if test="sortFieldList != null and sortFieldList.size() > 0">
+         order by
+         <foreach collection="sortFieldList" item="sortField" separator=", ">
+            ${sortField.field} 
+            <choose>
+               <when test="sortField.ascending">asc</when>
+               <otherwise>desc</otherwise>
+            </choose>
+         </foreach>
+      </if>
+      <if test="limit != null and limit >= 0">
+         limit #{limit}
+      </if>
+      <if test="offset != null and offset >= 0">
+         offset #{offset}
+      </if>
+   </select>
+
+   <!-- 6. cleanup -->
+   <delete id="cleanup">
+      delete from dmp_account
+   </delete>
+
+</mapper>

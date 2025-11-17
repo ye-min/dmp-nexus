@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wisdomsky.dmp.security.mapper.RoleMapper">
+
+   <resultMap id="roleResultMap" type="com.wisdomsky.dmp.security.model.Role">
+      <id property="id" column="id" />
+      <result property="code" column="code" />
+      <result property="name" column="name" />
+      <result property="description" column="description" />
+      <result property="status" column="status" />
+      <result property="recordCreatedTime" column="record_created_time" />
+      <result property="recordUpdatedTime" column="record_updated_time" />
+   </resultMap>
+
+   <sql id="whereClause">
+      record_deleted = 0
+      <if test="param.idEqual != null">
+         and id = #{param.idEqual}
+      </if>
+      <if test="param.codeEqual != null and param.codeEqual != ''">
+         and code = #{param.codeEqual}
+      </if>
+      <if test="param.codeLike != null and param.codeLike != ''">
+         and code like concat('%', #{param.codeLike}, '%')
+      </if>
+      <if test="param.nameLike != null and param.nameLike != ''">
+         and name like concat('%', #{param.nameLike}, '%')
+      </if>
+      <if test="param.statusEqual != null and param.statusEqual > -1">
+         and status = #{param.statusEqual}
+      </if>
+      <if test="param.statusIn != null and param.statusIn.siez() > 0">
+         and status in
+         <foreach item="status" collection="param.statusIn" open="(" separator="," close=")">
+            #{status}
+         </foreach>
+      </if>
+      <if test="param.accountIdEqual != null and param.accountIdEqual > 0">
+         and id in (select role_id from dmp_account_role_link where account_id = #{param.accountIdEqual})
+      </if>
+      <if test="param.permissionIdEqual != null and param.permissionIdEqual > 0">
+         and id in (select role_id from dmp_role_permission_link where permission_id = #{param.permissionIdEqual})
+      </if>
+   </sql>
+
+   <!-- 1. create -->
+   <insert id="create" parameterType="com.wisdomsky.dmp.security.model.RoleCreateParam" useGeneratedKeys="true" keyProperty="id">
+      insert into dmp_role(
+         code,
+         name,
+         description,
+         status,
+         record_deleted,
+         record_created_time,
+         record_updated_time)
+      values (
+         #{param.code},
+         #{param.name},
+         #{param.description},
+         #{param.status},
+         0,
+         now(),
+         now())
+   </insert>
+
+   <!-- 2. update -->
+   <update id="update" parameterType="com.wisdomsky.dmp.security.model.RoleUpdateParam">
+      update dmp_role
+      <set>
+         <if test="param.name != null">name = #{param.name},</if>
+         <if test="param.description != null">description = #{param.description},</if>
+         <if test="param.status != null">status = #{param.status},</if>
+         record_updated_time = now()
+      </set>
+      where id = #{param.id}
+   </update>
+
+   <!-- 3. delete -->
+   <delete id="delete">
+      update dmp_role
+      set code = code || '~deleted~' || id::text,
+          record_deleted = 1,
+          record_updated_time = now()
+      <where>
+         <include refid="whereClause"/>
+      </where>
+   </delete>
+
+   <!-- 4. count -->
+   <select id="count" resultType="long">
+      select count(*) from dmp_role
+      <where>
+         <include refid="whereClause"/>
+      </where>
+   </select>
+
+   <!-- 5. retrieve -->
+   <select id="retrieve" resultMap="roleResultMap">
+      select * from dmp_role
+      <where>
+         <include refid="whereClause"/>
+      </where>
+      <if test="sortFieldList != null and sortFieldList.size() > 0">
+         order by
+         <foreach collection="sortFieldList" item="sortField" separator=", ">
+            ${sortField.field} 
+            <choose>
+               <when test="sortField.ascending">asc</when>
+               <otherwise>desc</otherwise>
+            </choose>
+         </foreach>
+      </if>
+      <if test="limit != null and limit >= 0">
+         limit #{limit}
+      </if>
+      <if test="offset != null and offset >= 0">
+         offset #{offset}
+      </if>
+   </select>
+
+   <!-- 6. cleanup -->
+   <delete id="cleanup">
+      delete from dmp_role
+   </delete>
+</mapper>

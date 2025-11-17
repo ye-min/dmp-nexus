@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wisdomsky.dmp.security.mapper.MenuMapper">
+
+   <resultMap id="menuResultMap" type="com.wisdomsky.dmp.security.model.Menu">
+      <id property="id" column="id" />
+      <result property="code" column="code" />
+      <result property="name" column="name" />
+      <result property="description" column="description" />
+      <result property="parentId" column="parent_id" />
+      <result property="type" column="type" />
+      <result property="icon" column="icon" />
+      <result property="sequence" column="sequence" />
+      <result property="url" column="url" />
+      <result property="status" column="status" />
+      <result property="recordCreatedTime" column="record_created_time" />
+      <result property="recordUpdatedTime" column="record_updated_time" />
+   </resultMap>
+
+   <sql id="whereClause">
+      record_deleted = 0
+      <if test="param.idEqual != null">
+         and m.id = #{param.idEqual}
+      </if>
+      <if test="param.codeEqual != null and param.codeEqual != ''">
+         and m.code = #{param.codeEqual}
+      </if>
+      <if test="param.codeLike != null and param.codeLike != ''">
+         and m.code like concat('%', #{param.codeLike}, '%')
+      </if>
+      <if test="param.nameLike != null and param.nameLike != ''">
+         and m.name like concat('%', #{param.nameLike}, '%')
+      </if>
+      <if test="param.typeEqual != null and param.typeEqual > -1">
+         and m.type = #{param.typeEqual}
+      </if>
+      <if test="param.typeIn != null and param.typeIn.siez() > 0">
+         and m.type in
+         <foreach item="type" collection="param.typeIn" open="(" separator="," close=")">
+            #{type}
+         </foreach>
+      </if>
+      <if test="param.statusEqual != null and param.statusEqual >= 0">
+         and m.status = #{param.statusEqual}
+      </if>
+      <if test="param.statusIn != null and param.statusIn.siez() > 0">
+         and m.status in
+         <foreach item="status" collection="param.statusIn" open="(" separator="," close=")">
+            #{status}
+         </foreach>
+      </if>
+      <if test="param.parentIdEqual != null and param.parentIdEqual >= 0">
+         and m.parent_id = #{param.parentIdEqual}
+      </if>
+      <if test="param.accountIdEqual != null and param.accountIdEqual > 0">
+         and m.id in (select pm.menu_id from dmp_permission_menu_link pm where pm.permission_id in (select rp.permission_id from dmp_role_permission_link rp where rp.role_id in (select ar.role_id from dmp_account_role_link ar where ar.account_id = #{param.accountIdEqual})))
+      </if>
+      <if test="param.roleIdEqual != null and param.roleIdEqual > 0">
+         and m.id in (select pm.menu_id from dmp_permission_menu_link pm where pm.permission_id in (select rp.permission_id from dmp_role_permission_link rp where rp.role_id = #{param.roleIdEqual}))
+      </if>
+      <if test="param.permissionIdEqual != null and param.permissionIdEqual > 0">
+         and m.id in (select pm.menu_id from dmp_permission_menu_link pm where pm.permission_id  = #{permissionIdEqual})
+      </if>
+   </sql>
+
+   <!-- 1. create -->
+   <insert id="create" parameterType="com.wisdomsky.dmp.security.model.MenuCreateParam">
+      insert into dmp_menu(
+         id,
+         code,
+         name,
+         description,
+         parent_id,
+         type,
+         icon,
+         sequence,
+         url,
+         status,
+         record_deleted,
+         record_created_time,
+         record_updated_time)
+      values (
+         #{param.id},
+         #{param.code},
+         #{param.name},
+         #{param.description},
+         #{param.parentId},
+         #{param.type},
+         #{param.icon},
+         #{param.sequence},
+         #{param.url},
+         #{param.status},
+         0,
+         now(),
+         now())
+   </insert>
+
+   <!-- 2. update -->
+   <update id="update">
+      update dmp_menu
+      <set>
+         <if test="param.name != null">name = #{param.name},</if>
+         <if test="param.description != null">description = #{param.description},</if>
+         <if test="param.type != null">type = #{param.type},</if>
+         <if test="param.icon != null">icon = #{param.icon},</if>
+         <if test="param.sequence != null">sequence = #{param.sequence},</if>
+         <if test="param.url != null">url = #{param.url},</if>
+         <if test="param.status != null">status = #{param.status},</if>
+         record_updated_time = now()
+      </set>
+      where id = #{param.id}
+   </update>
+
+   <!-- 3. delete -->
+   <delete id="delete">
+      update dmp_menu
+      set code = code || '~deleted~' || id::text,
+          record_deleted = 1,
+          record_updated_time = now()
+      <where>
+         <include refid="whereClause"/>
+      </where> 
+   </delete>
+
+   <!-- 4. count -->
+   <select id="count" parameterType="com.wisdomsky.dmp.security.model.MenuQueryParam" resultType="long">
+      select count(
+      <if test="param.idEqual != null or param.idEqual != null" >
+         distinct
+      </if>
+      m.*) from dmp_menu m
+      <where>
+         <include refid="whereClause"/>
+      </where>
+   </select>
+
+   <!-- 5. retrieve -->
+   <select id="retrieve" resultMap="menuResultMap">
+      select 
+      <if test="param.idEqual != null or param.idEqual != null" >
+         distinct
+      </if>
+      m.* from dmp_menu m
+      <where>
+         <include refid="whereClause"/>
+      </where> 
+      <if test="sortFieldList != null and sortFieldList.size() > 0">
+         order by
+         <foreach collection="sortFieldList" item="sortField" separator=", ">
+            m.${sortField.field} 
+            <choose>
+               <when test="sortField.ascending">asc</when>
+               <otherwise>desc</otherwise>
+            </choose>
+         </foreach>
+      </if>
+      <if test="limit != null and limit >= 0">
+         limit #{limit}
+      </if>
+      <if test="offset != null and offset >= 0">
+         offset #{offset}
+      </if>
+   </select>
+
+   <!-- 6. cleanup -->
+   <delete id="cleanup">
+      delete from dmp_menu
+   </delete>
+</mapper>
