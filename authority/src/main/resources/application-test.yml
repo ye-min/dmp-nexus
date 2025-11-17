@@ -1,0 +1,98 @@
+# application-test.yml
+server:
+  port: 7912
+  address: 0.0.0.0
+  servlet:
+    context-path: /dmp/authority
+  tomcat:
+    threads:
+      max: 50
+      min-spare: 5
+    max-connections: 2000
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.cloud.client.ip-address}:${server.port}
+    lease-renewal-interval-in-seconds: 30 # 心跳间隔，默认 30 秒
+    lease-expiration-duration-in-seconds: 90 # 服务失效时间，默认 90 秒
+    status-page-url-path: /actuator/info
+    health-check-url-path: /actuator/health
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    region: default
+    availability-zones:
+      default: defaultZone
+    prefer-same-zone-eureka: true
+    service-url:
+      defaultZone: http://${spring.security.user.name}:${spring.security.user.password}@${tjtc.eureka.host}:${tjtc.eureka.port}/eureka/
+    registry-fetch-interval-seconds: 10
+    healthcheck:
+      enabled: true
+
+spring:
+  application:
+    name: dmp-authority
+  cloud:
+    service-registry:
+      auto-registration:
+        enabled: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: wIsdom2019!
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/dmp?serverTimezone=Asia/Shanghai
+    username: postgres
+    password: wIsdom2019!
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      order-map-entries-by-keys: false
+  security:
+    user:
+      name: wis
+      password: wIsdom2019!
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus,loggers"  # 只暴露必要端点
+      base-path: /actuator  # 明确设置基础路径
+  info:
+    git:
+      mode: full
+  health:
+    db:
+      enabled: true
+    defaults:
+      enabled: true
+    diskspace:
+      enabled: true
+    ping:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  endpoint:
+    health:
+      show-details: WHEN_AUTHORIZED  # 只向授权用户显示详情
+    shutdown:
+      access: NONE  # 禁用远程关闭功能
+
+tjtc:
+  date-format: yyyy-MM-dd
+  date-time-format: yyyy-MM-dd HH:mm:ss
+  default-password: 123456
+  debug: false
+  device:
+    token: tjtc
+  eureka:
+    host: localhost
+    port: 8001

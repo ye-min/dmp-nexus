@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wisdomsky.dmp.message.mapper.MessageMapper">
+
+   <resultMap id="messageResultMap" type="com.wisdomsky.dmp.message.model.Message">
+      <id property="id" column="id" />
+      <result property="ip" column="ip" />
+      <result property="deviceCode" column="device_code" />
+      <result property="topic" column="topic" />
+      <result property="tag" column="tag" />
+      <result property="content" column="content" />
+      <result property="sendTime" column="send_time" />
+      <result property="recordCreatedTime" column="record_created_time" />
+   </resultMap>
+
+   <sql id="whereClause">
+      <if test="param.idEqual != null">
+         and id = #{param.idEqual}
+      </if>
+      <if test="param.ipEqual != null and param.ipEqual != ''">
+         and ip = #{param.ipEqual}
+      </if>
+      <if test="param.deviceCodeEqual != null and param.deviceCodeEqual != ''">
+         and device_code = #{param.deviceCodeEqual}
+      </if>
+      <if test="param.topicEqual != null and param.topicEqual != ''">
+         and topic = #{param.topicEqual}
+      </if>
+      <if test="param.tagEqual != null and param.tagEqual != ''">
+         and tag = #{param.tagEqual}
+      </if>
+      <if test="param.contentLike != null and param.contentLike != ''">
+         and content like concat('%', #{param.contentLike}, '%')
+      </if>
+      <if test="param.sendTimeBefore != null">
+         and send_time &lt;= #{param.sendTimeBefore}
+      </if>
+      <if test="param.sendTimeAfter != null">
+         and send_time >= #{param.sendTimeAfter}
+      </if>
+   </sql>
+
+   <sql id="sortFieldMapping">
+      <choose>
+         <when test="sortField.field == 'id'">f.id</when>
+         <when test="sortField.field == 'ip'">f.ip</when>
+         <when test="sortField.field == 'deviceCode'">f.device_code</when>
+         <when test="sortField.field == 'topic'">f.topic</when>
+         <when test="sortField.field == 'tag'">f.tag</when>
+         <when test="sortField.field == 'sendTime'">f.send_time</when>
+         <otherwise>f.id</otherwise>
+      </choose>
+   </sql>
+
+   <!-- 1. create -->
+   <insert id="create" parameterType="com.wisdomsky.dmp.message.model.MessageCreateParam" useGeneratedKeys="true" keyProperty="id">
+      insert into iot_message(
+         ip,
+         device_code,
+         topic,
+         tag,
+         content,
+         send_time,
+         record_created_time)
+      values (
+         #{param.ip},
+         #{param.deviceCode},
+         #{param.topic},
+         #{param.tag},
+         #{param.content},
+         #{param.sendTime},
+         now())
+   </insert>
+
+   <!-- 3. delete -->
+   <delete id="delete">
+      delete from iot_message
+      <where>
+         <include refid="whereClause"/>
+      </where> 
+   </delete>
+
+   <!-- 4. count -->
+   <select id="count" parameterType="com.wisdomsky.dmp.message.model.MessageQueryParam" resultType="long">
+      select count(*) from iot_message
+      <where>
+         <include refid="whereClause"/>
+      </where>
+   </select>
+
+   <!-- 5. retrieve -->
+   <select id="retrieve" resultMap="messageResultMap">
+      select f.* from iot_message f
+      <where>
+         <include refid="whereClause"/>
+      </where> 
+      <if test="sortFieldList != null and sortFieldList.size() > 0">
+         order by
+         <foreach collection="sortFieldList" item="sortField" separator=", ">
+            <include refid="sortFieldMapping"/>
+            <choose>
+               <when test="sortField.ascending">asc</when>
+               <otherwise>desc</otherwise>
+            </choose>
+         </foreach>
+      </if>
+      <if test="limit != null and limit >= 0">
+         limit #{limit}
+      </if>
+      <if test="offset != null and offset >= 0">
+         offset #{offset}
+      </if>
+   </select>
+
+   <!-- 6. cleanup -->
+   <delete id="cleanup">
+      delete from iot_message
+   </delete>
+</mapper>
