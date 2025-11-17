@@ -97,6 +97,7 @@ application-local.yml
 ./deploy/*.tar
 
 application-dev.yml
+application-test.yml
 *.tar
 test/python/__pycache__
 test/demo
