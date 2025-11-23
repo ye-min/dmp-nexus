@@ -1,0 +1,199 @@
+services:
+  registry:
+    image: registry:${REGISTRY_VERSION}
+    container_name: dmp-registry
+    environment:
+      - TZ=Asia/Shanghai
+      - JAVA_OPTS=${EUREKA_JAVA_OPTS}
+      - SECURITY_NAME=${SECURITY_NAME}
+      - SECURITY_PASSWORD=${SECURITY_PASSWORD}
+    volumes:
+      - ./log/registry:/app/log
+    mem_limit: 384M
+    cpus: 0.2
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.2'
+        reservations:
+          memory: 256M
+          cpus: '0.15'
+    expose:
+      - "8001"
+    networks:
+      - dmp-internal-network
+      - dmp-external-network
+    restart: unless-stopped
+
+  auth:
+    image: auth:${AUTH_VERSION}
+    container_name: dmp-auth
+    environment:
+      - TZ=Asia/Shanghai
+      - JAVA_OPTS=${API_JAVA_OPTS}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SECURITY_NAME=${SECURITY_NAME}
+      - SECURITY_PASSWORD=${SECURITY_PASSWORD}
+    volumes:
+      - ./log/auth:/app/log
+    mem_limit: 384M
+    cpus: 0.2
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.2'
+        reservations:
+          memory: 256M
+          cpus: '0.15'
+    depends_on:
+      - registry
+    networks:
+      - dmp-internal-network
+    restart: unless-stopped
+
+  users:
+    image: users:${USERS_VERSION}
+    container_name: dmp-users
+    environment:
+      - TZ=Asia/Shanghai
+      - JAVA_OPTS=${API_JAVA_OPTS}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SECURITY_NAME=${SECURITY_NAME}
+      - SECURITY_PASSWORD=${SECURITY_PASSWORD}
+    volumes:
+      - ./log/users:/app/log
+    mem_limit: 384M
+    cpus: 0.2
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.2'
+        reservations:
+          memory: 256M
+          cpus: '0.15'
+    depends_on:
+      - registry
+      - auth
+    networks:
+      - dmp-internal-network
+    restart: unless-stopped
+
+  gateway:
+    image: gateway:${GATEWAY_VERSION}
+    container_name: dmp-gateway
+    environment:
+      - TZ=Asia/Shanghai
+      - JAVA_OPTS=${GATEWAY_JAVA_OPTS}
+      - SECURITY_NAME=${SECURITY_NAME}
+      - SECURITY_PASSWORD=${SECURITY_PASSWORD}
+    volumes:
+      - ./log/gateway:/app/log
+    mem_limit: 512M
+    cpus: 0.3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 384M
+          cpus: '0.2'
+    depends_on:
+      - registry
+    networks:
+      - dmp-internal-network
+      - dmp-external-network
+    restart: unless-stopped
+
+  archive:
+    image: archive:${ARCHIVE_VERSION}
+    container_name: dmp-archive
+    environment:
+      - TZ=Asia/Shanghai
+      - JAVA_OPTS=${API_JAVA_OPTS}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SECURITY_NAME=${SECURITY_NAME}
+      - SECURITY_PASSWORD=${SECURITY_PASSWORD}
+    volumes:
+      - ./log/archive:/app/log
+    mem_limit: 384M
+    cpus: 0.2
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.2'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - dmp-internal-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./log/nginx:/var/log/nginx
+      - /etc/letsencrypt/live/iot.creatingtech.cn/fullchain.pem:/etc/nginx/ssl/fullchain.pem
+      - /etc/letsencrypt/live/iot.creatingtech.cn/privkey.pem:/etc/nginx/ssl/privkey.pem
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8001:8001"
+      - "9999:9999"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.2'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    depends_on:
+      - registry
+      - gateway
+    networks:
+      - dmp-external-network
+    restart: unless-stopped
+
+networks:
+  dmp-internal-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  dmp-external-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24

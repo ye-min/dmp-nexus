@@ -37,239 +37,77 @@ spring:
         enabled: true
     gateway:
       routes:
-        - id: login-options
-          uri: no://op
+        # -------------------------------------------------------------
+        # 路由 1: 基础认证
+        # -------------------------------------------------------------
+        - id: route_auth_service
+          # uri: 使用 lb:// 协议前缀来启用基于 Eureka 的负载均衡
+          uri: lb://dmp-auth
           predicates:
-            - Path=/tjtc/v1/dmp/login
-            - Method=OPTIONS
+            - Path=/checkSign/newsignValid
+            - Method=POST,HEAD,OPTIONS
           filters:
-            - AddResponseHeader=Access-Control-Allow-Origin, *
-            - AddResponseHeader=Access-Control-Allow-Methods, GET,POST,OPTIONS
-            - AddResponseHeader=Access-Control-Allow-Headers, *
+            # APISIX 的 pass_host: pass 是 Spring Cloud Gateway 的默认行为，无需额外配置
 
-        - id: global-options
-          uri: no://op
+        # -------------------------------------------------------------
+        # 路由 2: DMP PC 登录
+        # -------------------------------------------------------------
+        - id: route_dmp_pc_login
+          uri: lb://dmp-users
           predicates:
-            - Path=/tjtc/v1/dmp/**
-            - Method=OPTIONS
+            - Path=/dmp/api/v1/users/login
+            - Method=POST,HEAD,OPTIONS
+            # 高级匹配条件：匹配请求头
+            - Header=appID, DMPPC
           filters:
-            - AddResponseHeader=Access-Control-Allow-Origin, *
-            - AddResponseHeader=Access-Control-Allow-Methods, GET,POST,OPTIONS
-            - AddResponseHeader=Access-Control-Allow-Headers, *
+            # 路径改写：静态改写
+            - SetPath=/users/login
 
-        - id: authority-options
-          uri: no://op
+        # -------------------------------------------------------------
+        # 路由 3: DMP PC 用户普通服务
+        # -------------------------------------------------------------
+        - id: route_dmp_pc_user_service
+          uri: lb://dmp-users
           predicates:
-            - Path=/dmp/authority/**
-            - Method=OPTIONS
+            - Path=/dmp/api/v1/users/**
+            - Method=POST,HEAD,OPTIONS
+            - Header=appID, DMPPC
           filters:
-            - AddResponseHeader=Access-Control-Allow-Origin, *
-            - AddResponseHeader=Access-Control-Allow-Methods, GET,POST,OPTIONS
-            - AddResponseHeader=Access-Control-Allow-Headers, *
-
-        - id: login
-          uri: lb://dmp-security
-          predicates:
-            - Path=/tjtc/v1/dmp/login
-            - Header=app, DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/login, /dmp/security/identity/login
-            - name: Retry
+            # 插件1: forward-auth - 使用自定义过滤器实现
+            # 我们将定义一个名为 "ForwardAuth" 的自定义过滤器
+            - name: ForwardAuth
               args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
-        
-        - id: logout
-          uri: lb://dmp-security
-          predicates:
-            - Path=/tjtc/v1/dmp/logout
-            - Header=app, DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/logout, /dmp/security/identity/logout
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
+                uri: lb://dmp-auth/checkSign/newsignValid
+                headers: appID,clientID,timestamp,userID,sign
+            
+            # 插件2: proxy-rewrite (正则)
+            - RewritePath=/dmp/api/v1/(?<segment>.*), /$\{segment}
+            
+            # 插件3: response-rewrite (条件性) - 使用自定义过滤器实现
+            # 我们将定义一个名为 "ModifyUnauthorizedResponse" 的自定义过滤器
+            - name: ModifyUnauthorizedResponse
+            
+            # 注意: CORS 已经通过全局配置处理，此处无需再配
 
-        - id: authority-internal
-          uri: lb://dmp-authority
+        # -------------------------------------------------------------
+        # 路由 4: DMP 数据服务
+        # -------------------------------------------------------------
+        - id: route_dmp_data_service
+          uri: lb://dmp-archive
           predicates:
-            - Path=/dmp/authority/**
-            - Header=app, (TROLLEYTRACE|GPS|CATALOGUE|PINPOINT|DMPCLIENT)
-            - Method=GET,POST
+            - Path=/dmp/api/v1/archive/**
+            - Method=POST,HEAD,OPTIONS
+            - Header=appID, DMPPC
           filters:
-            - name: InternalAccessValidation
-            - name: Retry
+            # 同样使用上面定义的自定义过滤器
+            - name: ForwardAuth
               args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
+                uri: lb://dmp-auth/checkSign/newsignValid
+                headers: appID,clientID,timestamp,userID,sign
+            
+            - RewritePath=/dmp/api/v1/(?<segment>.*), /$\{segment}
 
-        - id: security-client
-          uri: lb://dmp-security
-          predicates:
-            - Path=/tjtc/v1/dmp/security/**
-            - Header=app,DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/security/(?<segment>.*), /dmp/security/$\{segment}
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
-
-        - id: message-client
-          uri: lb://dmp-message
-          predicates:
-            - Path=/tjtc/v1/dmp/message/client/**
-            - Header=app,DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/message/client/(?<segment>.*), /dmp/message/client/$\{segment}
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                exceptions: java.net.ConnectException, java.io.IOException
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
-
-        - id: gps-client
-          uri: lb://dmp-gps
-          predicates:
-            - Path=/tjtc/v1/dmp/gps/client/**
-            - Header=app,DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/gps/client/(?<segment>.*), /dmp/gps/client/$\{segment}
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                exceptions: java.net.ConnectException, java.io.IOException
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
-
-        - id: transit-client
-          uri: lb://dmp-transit
-          predicates:
-            - Path=/tjtc/v1/dmp/transit/client/**
-            - Header=app,DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/transit/client/(?<segment>.*), /dmp/transit/client/$\{segment}
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                exceptions: java.net.ConnectException, java.io.IOException
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
-
-        - id: beacon-client
-          uri: lb://dmp-beacon
-          predicates:
-            - Path=/tjtc/v1/dmp/beacon/client/**
-            - Header=app,DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/beacon/client/(?<segment>.*), /dmp/beacon/client/$\{segment}
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                exceptions: java.net.ConnectException, java.io.IOException
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
-
-        - id: config-client
-          uri: lb://dmp-config-center
-          predicates:
-            - Path=/tjtc/v1/dmp/app/config/client/**
-            - Header=app,(TROLLEYTRACE|GPS|CATALOGUE|PINPOINT|DMPCLIENT)
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/app/config/client/(?<segment>.*), /dmp/app/config/client/$\{segment}
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                exceptions: java.net.ConnectException, java.io.IOException
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
-
-        - id: catalogue-client
-          uri: lb://dmp-catalogue
-          predicates:
-            - Path=/tjtc/v1/dmp/catalogue/client/**
-            - Header=app,DMPCLIENT
-            - Method=GET,POST
-          filters:
-            - RewritePath=/tjtc/v1/dmp/catalogue/client/(?<segment>.*), /dmp/catalogue/client/$\{segment}
-            - name: AuthorityValidation
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: GET,POST
-                exceptions: java.net.ConnectException, java.io.IOException
-                backoff:
-                  firstBackoff: 10ms
-                  maxBackoff: 50ms
-                  factor: 2
-                  basedOnPreviousValue: false
+            - name: ModifyUnauthorizedResponse
 
       discovery:
         locator:
@@ -349,9 +187,3 @@ tjtc:
   eureka:
     host: registry
     port: 8001
-
-  authority:
-    login: http://dmp-authority/dmp/authority/sign/validate-login
-    api: http://dmp-authority/dmp/authority/sign/validate-api
-    multipart: http://dmp-authority/dmp/authority/sign/validate-multipart
-    upload-path: /packet/file/upload

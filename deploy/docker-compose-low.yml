@@ -1,0 +1,238 @@
+version: '3'
+
+services:
+  registry:
+    image: registry:${REGISTRY_VERSION}
+    container_name: iot-registry
+    ports:
+      - "8001:8001"
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${EUREKA_JAVA_OPTS}"
+    volumes:
+      - ./log/registry:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.4'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    networks:
+      - iot-internal-network
+      - iot-external-network
+    restart: unless-stopped
+  
+  authority:
+    image: authority:${AUTHORITY_VERSION}
+    container_name: iot-authority
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${API_JAVA_OPTS}"
+    volumes:
+      - ./log/authority:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: '0.2'
+        reservations:
+          memory: 96M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+    restart: unless-stopped
+  
+  security:
+    image: security:${SECURITY_VERSION}
+    container_name: iot-security
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${API_JAVA_OPTS}"
+    volumes:
+      - ./log/security:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: '0.2'
+        reservations:
+          memory: 96M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+    restart: unless-stopped
+
+  gateway:
+    image: gateway:${GATEWAY_VERSION}
+    container_name: iot-gateway
+    ports:
+      - "19999:9999"
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${GATEWAY_JAVA_OPTS}"
+    volumes:
+      - ./log/gateway:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.4'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+      - iot-external-network
+    restart: unless-stopped
+
+  message:
+    image: message:${MESSAGE_VERSION}
+    container_name: iot-message
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${API_JAVA_OPTS}"
+    volumes:
+      - ./log/message:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: '0.2'
+        reservations:
+          memory: 96M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+    restart: unless-stopped
+
+  transit:
+    image: transit:${TRANSIT_VERSION}
+    container_name: iot-transit
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${API_JAVA_OPTS}"
+    volumes:
+      - ./log/transit:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: '0.2'
+        reservations:
+          memory: 96M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+    restart: unless-stopped
+  
+  beacon:
+    image: beacon:${BEACON_VERSION}
+    container_name: iot-beacon
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${API_JAVA_OPTS}"
+    volumes:
+      - ./log/beacon:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: '0.2'
+        reservations:
+          memory: 96M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+    restart: unless-stopped
+
+  catalogue:
+    image: catalogue:${CATALOGUE_VERSION}
+    container_name: iot-catalogue
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${API_JAVA_OPTS}"
+    volumes:
+      - ./log/catalogue:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: '0.2'
+        reservations:
+          memory: 96M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+    restart: unless-stopped
+  
+  #gps:
+  #  image: gps:${GPS_VERSION}
+  #  container_name: iot-gps
+  #  environment:
+  #    TZ: Asia/Shanghai
+  #    JAVA_OPTS: "${API_JAVA_OPTS}"
+  #  volumes:
+  #    - ./log/gps:/app/log
+  #  deploy:
+  #    resources:
+  #      limits:
+  #        memory: 192M
+  #        cpus: '0.2'
+  #      reservations:
+  #        memory: 96M
+  #        cpus: '0.1'
+  #  depends_on:
+  #    - register
+  #  networks:
+  #    - iot-internal-network
+  #  restart: unless-stopped
+
+  config-center:
+    image: config-center:${CONFIG_CENTER_VERSION}
+    container_name: iot-config-center
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "${API_JAVA_OPTS}"
+    volumes:
+      - ./log/config-center:/app/log
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.2'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    depends_on:
+      - registry
+    networks:
+      - iot-internal-network
+    restart: unless-stopped
+
+networks:
+  iot-internal-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  iot-external-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
