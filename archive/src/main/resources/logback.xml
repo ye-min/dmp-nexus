@@ -12,7 +12,7 @@
   <!-- File Appender -->
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>log/message.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <fileNamePattern>log/archive.%d{yyyy-MM-dd}.log</fileNamePattern>
       <maxHistory>30</maxHistory>
     </rollingPolicy>
     <encoder>
@@ -25,7 +25,7 @@
     <appender-ref ref="CONSOLE" />
     <appender-ref ref="FILE" />
   </logger>
-  <logger name="com.wisdomsky.dmp.library" level="WARN">
+  <logger name="com.wisdomsky.dmp.archive" level="WARN">
     <appender-ref ref="CONSOLE" />
     <appender-ref ref="FILE" />
   </logger>

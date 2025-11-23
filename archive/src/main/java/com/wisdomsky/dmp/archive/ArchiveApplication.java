@@ -11,7 +11,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @EnableDiscoveryClient
 @EnableFeignClients
 @EnableAspectJAutoProxy
-@ComponentScan(basePackages = {"com.wisdomsky.dmp.archive", "com.wisdomsky.dmp.library"})
+@ComponentScan(basePackages = {"com.wisdomsky.dmp.archive"})
 public class ArchiveApplication 
 {
    public static void main( String[] args )

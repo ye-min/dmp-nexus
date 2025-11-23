@@ -102,3 +102,8 @@ application-test.yml
 test/python/__pycache__
 test/demo
 log/
+
+application-release.yml
+application-test.yml
+application-demo.yml
+application-local.yml
