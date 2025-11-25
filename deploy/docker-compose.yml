@@ -164,8 +164,6 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./log/nginx:/var/log/nginx
-      - /etc/letsencrypt/live/iot.creatingtech.cn/fullchain.pem:/etc/nginx/ssl/fullchain.pem
-      - /etc/letsencrypt/live/iot.creatingtech.cn/privkey.pem:/etc/nginx/ssl/privkey.pem
     ports:
       - "80:80"
       - "443:443"
