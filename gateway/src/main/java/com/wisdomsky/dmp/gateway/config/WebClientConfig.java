@@ -1,5 +1,9 @@
 package com.wisdomsky.dmp.gateway.config;
 
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,16 +12,27 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class WebClientConfig {
 
-    /**
-     * 创建一个被 @LoadBalanced 注解标记的 WebClient.Builder Bean。
-     * 当其他组件（比如你的 ForwardAuthGatewayFilterFactory）注入 WebClient.Builder 时，
-     * Spring 会优先提供这个被增强过的 Bean。
-     *
-     * @return 一个具备负载均衡能力的 WebClient.Builder 实例
-     */
     @Bean
     @LoadBalanced
     public WebClient.Builder loadBalancedWebClientBuilder() {
         return WebClient.builder();
+    }
+
+    @Bean
+    public CloseableHttpClient httpClient() {
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(6000) // 连接超时
+                .setConnectionRequestTimeout(6000) // 从连接池获取连接的超时
+                .setSocketTimeout(6000) // 数据传输超时
+                .build();
+
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        connectionManager.setMaxTotal(320);
+        connectionManager.setDefaultMaxPerRoute(320);
+
+        return HttpClientBuilder.create()
+                .setDefaultRequestConfig(requestConfig)
+                .setConnectionManager(connectionManager)
+                .build();
     }
 }

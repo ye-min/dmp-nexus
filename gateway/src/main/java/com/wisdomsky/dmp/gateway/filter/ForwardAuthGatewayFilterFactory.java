@@ -8,7 +8,6 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -22,7 +21,8 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class ForwardAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<ForwardAuthGatewayFilterFactory.Config> {
+public class ForwardAuthGatewayFilterFactory
+        extends AbstractGatewayFilterFactory<ForwardAuthGatewayFilterFactory.Config> {
 
     private final WebClient webClient;
 
@@ -44,60 +44,59 @@ public class ForwardAuthGatewayFilterFactory extends AbstractGatewayFilterFactor
 
                 // 将 Flux<DataBuffer> 转换为 Mono<String>
                 Mono<String> bodyStringMono = body
-                    .map(buffer -> {
-                        byte[] bytes = new byte[buffer.readableByteCount()];
-                        buffer.read(bytes);
-                        return new String(bytes, StandardCharsets.UTF_8);
-                    })
-                    .reduce(String::concat)
-                    .defaultIfEmpty("");
+                        .map(buffer -> {
+                            byte[] bytes = new byte[buffer.readableByteCount()];
+                            buffer.read(bytes);
+                            return new String(bytes, StandardCharsets.UTF_8);
+                        })
+                        .reduce(String::concat)
+                        .defaultIfEmpty("");
 
                 // 使用 flatMap 构建响应式链
                 return bodyStringMono.flatMap(bodyString -> {
-                    
+
                     // 构建发往认证服务的请求
                     WebClient.ResponseSpec responseSpec = webClient
-                        .method(HttpMethod.POST)
-                        .uri(URI.create(config.getUri()))
-                        .headers(authHeaders -> {
-                            HttpHeaders originalHeaders = cachedRequest.getHeaders();
-                            config.getHeaders().forEach(headerName -> {
-                                List<String> headerValues = originalHeaders.get(headerName);
-                                if (headerValues != null && !headerValues.isEmpty()) {
-                                    authHeaders.addAll(headerName, headerValues);
+                            .method(HttpMethod.POST)
+                            .uri(URI.create(config.getUri()))
+                            .headers(authHeaders -> {
+                                HttpHeaders originalHeaders = cachedRequest.getHeaders();
+                                config.getHeaders().forEach(headerName -> {
+                                    List<String> headerValues = originalHeaders.get(headerName);
+                                    if (headerValues != null && !headerValues.isEmpty()) {
+                                        authHeaders.addAll(headerName, headerValues);
+                                    }
+                                });
+
+                                // [最终修正] 从正确的 'cachedRequest' 对象获取 URI
+                                authHeaders.set("X-Forwarded-Uri", cachedRequest.getURI().getPath());
+
+                                if (originalHeaders.getContentType() != null) {
+                                    authHeaders.setContentType(originalHeaders.getContentType());
                                 }
-                            });
-                            
-                            // [最终修正] 从正确的 'cachedRequest' 对象获取 URI
-                            authHeaders.set("X-Forwarded-Uri", cachedRequest.getURI().getPath());
-                            
-                            if (originalHeaders.getContentType() != null) {
-                                authHeaders.setContentType(originalHeaders.getContentType());
-                            }
-                        })
-                        .body(BodyInserters.fromValue(bodyString))
-                        .retrieve();
+                            })
+                            .body(BodyInserters.fromValue(bodyString))
+                            .retrieve();
 
                     // 发送认证请求并处理结果
                     return responseSpec
-                        .toBodilessEntity()
-                        .flatMap(responseEntity -> {
-                            // 认证成功
-                            if (responseEntity.getStatusCode().is2xxSuccessful()) {
-                                // [最终修正] 将已缓存的请求传递给下一个过滤器
-                                // 我们需要通过 mutate exchange 来传递这个新的、可重复读的 request
-                                return chain.filter(exchange.mutate().request(cachedRequest).build());
-                            } else {
-                                // 认证失败，短路请求
-                                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            .toBodilessEntity()
+                            .flatMap(responseEntity -> {
+                                // 认证成功
+                                if (responseEntity.getStatusCode().is2xxSuccessful()) {
+                                    return chain.filter(exchange.mutate().request(cachedRequest).build());
+                                } else {
+                                    // [关键修改] 认证失败，只设置状态码，然后完成
+                                    exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                                    return exchange.getResponse().setComplete();
+                                }
+                            })
+                            .onErrorResume(e -> {
+                                log.error("Forward-auth sub-request failed!", e);
+                                // [关键修改] 子请求失败，只设置状态码，然后完成
+                                exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
                                 return exchange.getResponse().setComplete();
-                            }
-                        })
-                        .onErrorResume(e -> {
-                            log.error("Forward-auth sub-request failed!", e);
-                            exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
-                            return exchange.getResponse().setComplete();
-                        });
+                            });
                 });
             });
         };
@@ -107,9 +106,20 @@ public class ForwardAuthGatewayFilterFactory extends AbstractGatewayFilterFactor
         private String uri;
         private List<String> headers;
 
-        public String getUri() { return uri; }
-        public void setUri(String uri) { this.uri = uri; }
-        public List<String> getHeaders() { return headers; }
-        public void setHeaders(String headers) { this.headers = Arrays.asList(headers.split(",")); }
+        public String getUri() {
+            return uri;
+        }
+
+        public void setUri(String uri) {
+            this.uri = uri;
+        }
+
+        public List<String> getHeaders() {
+            return headers;
+        }
+
+        public void setHeaders(String headers) {
+            this.headers = Arrays.asList(headers.split(","));
+        }
     }
 }
