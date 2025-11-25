@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/users")
 @Tag(name = "用户数据相关接口")
-@CrossOrigin
+// @CrossOrigin
 @Slf4j
 public class UserDataController {
 	@Autowired

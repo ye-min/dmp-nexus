@@ -24,7 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping(value = "/archive/rfm")
 @Tag(name = "RFM")
-@CrossOrigin
+// @CrossOrigin
 @Slf4j
 public class RFMArchiveController extends BaseController {
 

@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping(value = "/archive/dataset")
 @Tag(name = "DataSet")
-@CrossOrigin
+// @CrossOrigin
 @Slf4j
 public class DataSetController extends BaseController {
 

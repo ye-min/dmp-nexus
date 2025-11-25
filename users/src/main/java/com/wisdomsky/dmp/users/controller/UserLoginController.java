@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping(value="/users")
 @Tag(name = "用户登录相关")
-@CrossOrigin
+// @CrossOrigin
 @Slf4j
 
 public class UserLoginController {

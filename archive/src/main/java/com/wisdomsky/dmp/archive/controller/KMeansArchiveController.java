@@ -24,7 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping(value = "/archive/kmeans")
 @Tag(name = "KMeans")
-@CrossOrigin
+// @CrossOrigin
 @Slf4j
 public class KMeansArchiveController extends BaseController {
 
