@@ -12,7 +12,7 @@
   <!-- File Appender -->
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>log/gateway.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <fileNamePattern>log/gateway1.%d{yyyy-MM-dd}.log</fileNamePattern>
       <maxHistory>30</maxHistory>
     </rollingPolicy>
     <encoder>
@@ -22,11 +22,6 @@
 
   <!-- Logger Configuration -->
   <logger name="com.wisdomsky.dmp.gateway" level="WARN" additivity="false">
-    <appender-ref ref="CONSOLE" />
-    <appender-ref ref="FILE" />
-  </logger>
-
-  <logger name="com.wisdomsky.dmp.archive" level="WARN">
     <appender-ref ref="CONSOLE" />
     <appender-ref ref="FILE" />
   </logger>

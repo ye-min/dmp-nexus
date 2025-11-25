@@ -1,9 +1,7 @@
 # application-release.yml
 server:
-  port: 7914
+  port: 7917
   address: 0.0.0.0
-  servlet:
-    context-path: /dmp/archive
   tomcat:
     threads:
       max: 50
@@ -44,10 +42,12 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
   datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DATABASE}?serverTimezone=Asia/Shanghai
-    username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD}
+    archive:
+      driver-class-name: org.postgresql.Driver
+      time-zone: Asia/Shanghai
+      jdbc-url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DATABASE}
+      username: ${POSTGRES_USER:postgres}
+      password: ${POSTGRES_PASSWORD}
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
@@ -55,7 +55,7 @@ spring:
       order-map-entries-by-keys: false
   security:
     user:
-      name: ${SECURITY_NAME:iot}
+      name: ${SECURITY_NAME:dmp}
       password: ${SECURITY_PASSWORD}
 
 management:

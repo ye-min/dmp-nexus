@@ -18,8 +18,8 @@ eureka:
     status-page-url-path: /actuator/info
     health-check-url-path: /actuator/health
   client:
-    register-with-eureka: true
-    fetch-registry: true
+    register-with-eureka: false
+    fetch-registry: false
     region: default
     availability-zones:
       default: defaultZone
@@ -29,9 +29,9 @@ eureka:
     registry-fetch-interval-seconds: 10
     healthcheck:
       enabled: true
-  server:
-    peer-node-read-timeout-ms: 20000     # 默认值可能为2秒，建议调整为20秒
-    peer-node-connect-timeout-ms: 5000   # 连接超时时间（可选调整）
+  #server:
+  #  peer-node-read-timeout-ms: 20000     # 默认值可能为2秒，建议调整为20秒
+  #  peer-node-connect-timeout-ms: 5000   # 连接超时时间（可选调整）
 
 spring:
   application:
@@ -39,7 +39,7 @@ spring:
   cloud:
     service-registry:
       auto-registration:
-        enabled: true
+        enabled: false
   security:
     user:
       name: ${SECURITY_NAME:dmp}

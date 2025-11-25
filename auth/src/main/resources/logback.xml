@@ -26,7 +26,6 @@
     <appender-ref ref="FILE" />
   </logger>
 
-  <logger name="com.wisdomsky.dmp.archive.mapper" level="WARN" />
   <logger name="org.springframework.web" level="WARN" />
   <logger name="org.apache.ibatis" level="WARN" />
   <logger name="java.sql.Connection" level="WARN" />

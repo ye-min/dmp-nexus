@@ -83,12 +83,6 @@ spring:
             # 插件2: proxy-rewrite (正则)
             - RewritePath=/dmp/api/v1/(?<segment>.*), /$\{segment}
             
-            # 插件3: response-rewrite (条件性) - 使用自定义过滤器实现
-            # 我们将定义一个名为 "ModifyUnauthorizedResponse" 的自定义过滤器
-            - name: ModifyUnauthorizedResponse
-            
-            # 注意: CORS 已经通过全局配置处理，此处无需再配
-
         # -------------------------------------------------------------
         # 路由 4: DMP 数据服务
         # -------------------------------------------------------------
@@ -104,46 +98,14 @@ spring:
               args:
                 uri: lb://dmp-auth/checkSign/newsignValid
                 headers: appID,clientID,timestamp,userID,sign
-            
             - RewritePath=/dmp/api/v1/(?<segment>.*), /$\{segment}
-
-            - name: ModifyUnauthorizedResponse
-
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
-      globalcors:
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins:
-              - "http://localhost:9999"
-            allowedMethods:
-              - "GET"
-              - "POST"
-              - "PUT"
-              - "DELETE"
-              - "OPTIONS"
-            allowedHeaders:
-              - "Origin"
-              - "Content-Type"
-              - "Accept"
-              - "Authorization"
-              - "app"
-              - "client"
-              - "account"
-              - "timestamp"
-              - "digest"
-              - "sign"
-              - "*"
-            exposedHeaders:
-              - "Access-Control-Allow-Origin"
-              - "Access-Control-Allow-Credentials"
-            allowCredentials: true
-            maxAge: 3600
       httpclient:
-        connect-timeout: 6000 # 连接超时
-        response-timeout: 6s # 响应超时
+        connect-timeout: 60000 # 连接超时
+        response-timeout: 60s # 响应超时
   security:
     user:
       name: ${SECURITY_NAME:dmp}
